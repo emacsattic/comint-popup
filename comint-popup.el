@@ -10,9 +10,9 @@
 ;; LCD Archive Entry:
 ;; comint-popup|Noah Friedman|friedman@splode.com|
 ;; maybe show comint process output windows|
-;; $Date: 1999/10/08 11:15:21 $|$Revision: 1.2 $|~/misc/comint-popup.el.gz|
+;; $Date: 2009/05/13 03:36:14 $|$Revision: 1.3 $|~/misc/comint-popup.el.gz|
 
-;; $Id: comint-popup.el,v 1.2 1999/10/08 11:15:21 friedman Exp $
+;; $Id: comint-popup.el,v 1.3 2009/05/13 03:36:14 friedman Exp $
 
 ;;; Commentary:
 
@@ -81,6 +81,11 @@ This variable may be made buffer-local.")
 (defvar comint-popup-last-event '(0 0))
 (make-variable-buffer-local 'comint-popup-last-event)
 
+(defvar comint-popup-idle-threshold-max
+  (if (zerop (lsh -1 31))               ; VALBITS < 32
+      (lsh (lsh -1 1) -1)               ; biggest lisp integer < INT_MAX
+    (1- (lsh 1 31))))                   ; cap it at 2^31-1
+
 
 (defsubst comint-popup-prompt-visible-p (beg end)
   (and comint-popup-at-prompt-p
@@ -133,6 +138,29 @@ This variable may be made buffer-local.")
                (comint-popup-prompt-visible-p beg end)
                (comint-popup-output-urgent-p beg end))
            (pb-popup (current-buffer)))))))
+
+;;;###autoload
+(defun comint-popup-suppress-idle-popup (&optional prefix)
+  "Supress idle-timeout popups in the current buffer.
+With negative prefix argument, restore default idle timeout.
+
+This function works by making the variable `comint-popup-idle-threshold'
+buffer-local and setting it to a very large value.  With a negative prefix
+argument, the local variable is killed and the default global value resumes
+effect."
+  (interactive "P")
+  (cond ((or (null prefix)
+             (consp prefix)
+             (and (numberp prefix) (> prefix 0)))
+         (make-local-variable 'comint-popup-idle-threshold)
+         (setq comint-popup-idle-threshold comint-popup-idle-threshold-max)
+         (if (interactive-p)
+             (message "Idle-timeout popups throttled in this buffer")))
+        (t
+         (kill-local-variable 'comint-popup-idle-threshold)
+         (if (interactive-p)
+             (message "Idle-timeout popups at %s seconds"
+                      comint-popup-idle-threshold)))))
 
 (provide 'comint-popup)
 
